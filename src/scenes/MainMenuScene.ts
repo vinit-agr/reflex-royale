@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { getSoundManager } from '../game/SoundManager';
 
 export class MainMenuScene extends Phaser.Scene {
   private particles: Phaser.GameObjects.Arc[] = [];
@@ -9,6 +10,7 @@ export class MainMenuScene extends Phaser.Scene {
 
   create(): void {
     const { width, height } = this.scale;
+    const soundManager = getSoundManager();
 
     // Animated background particles
     for (let i = 0; i < 20; i++) {
@@ -57,15 +59,20 @@ export class MainMenuScene extends Phaser.Scene {
     });
 
     // Subtitle
-    const subtitle = this.add.text(width / 2, height / 3 + 60, 'Test your reflexes!', {
+    this.add.text(width / 2, height / 3 + 60, 'Test your reflexes!', {
       fontFamily: 'Arial',
       fontSize: '20px',
       color: '#ffffff',
     }).setOrigin(0.5).setAlpha(0.7);
 
+    // Lives display preview
+    this.add.text(width / 2, height / 3 + 95, '❤️ ❤️ ❤️', {
+      fontSize: '24px',
+    }).setOrigin(0.5);
+
     // Decorative target preview
-    const previewTarget = this.add.circle(width / 2, height / 2 + 30, 40, 0xe94560);
-    const previewRing = this.add.circle(width / 2, height / 2 + 30, 50, 0xe94560, 0).setStrokeStyle(3, 0xffffff, 0.5);
+    this.add.circle(width / 2, height / 2 + 50, 45, 0xe94560);
+    const previewRing = this.add.circle(width / 2, height / 2 + 50, 55, 0xe94560, 0).setStrokeStyle(3, 0xffffff, 0.5);
     
     this.tweens.add({
       targets: previewRing,
@@ -76,17 +83,33 @@ export class MainMenuScene extends Phaser.Scene {
     });
 
     // Start button area
-    const buttonBg = this.add.rectangle(width / 2, height * 0.75, 250, 60, 0x16213e)
-      .setStrokeStyle(2, 0x4a4a6a);
+    const buttonBg = this.add.rectangle(width / 2, height * 0.78, 250, 60, 0x16213e)
+      .setStrokeStyle(2, 0x4a4a6a)
+      .setInteractive({ useHandCursor: true });
     
-    const startText = this.add.text(width / 2, height * 0.75, '▶  CLICK TO START', {
+    const startText = this.add.text(width / 2, height * 0.78, '▶  TAP TO START', {
       fontFamily: 'Arial',
       fontSize: '22px',
       color: '#ffffff',
     }).setOrigin(0.5);
 
-    // Make the entire scene clickable
-    this.input.once('pointerdown', () => {
+    // Button hover effects
+    buttonBg.on('pointerover', () => {
+      buttonBg.setFillStyle(0x2a2a4e);
+      buttonBg.setStrokeStyle(2, 0x6a6a8a);
+    });
+
+    buttonBg.on('pointerout', () => {
+      buttonBg.setFillStyle(0x16213e);
+      buttonBg.setStrokeStyle(2, 0x4a4a6a);
+    });
+
+    // Click handler
+    const startGame = () => {
+      // Resume audio context on user interaction
+      soundManager.resume();
+      soundManager.playPop();
+
       // Click feedback
       this.tweens.add({
         targets: [buttonBg, startText],
@@ -100,7 +123,9 @@ export class MainMenuScene extends Phaser.Scene {
           });
         }
       });
-    });
+    };
+
+    buttonBg.on('pointerdown', startGame);
 
     // Blinking animation on start text
     this.tweens.add({
@@ -111,10 +136,16 @@ export class MainMenuScene extends Phaser.Scene {
       repeat: -1,
     });
 
-    // Instructions
-    const instructions = this.add.text(width / 2, height - 40, 'Click targets before they disappear. Miss one = Game Over!', {
+    // Instructions - updated for lives system
+    this.add.text(width / 2, height - 50, 'Click targets before they disappear!', {
       fontFamily: 'Arial',
-      fontSize: '14px',
+      fontSize: '15px',
+      color: '#ffffff',
+    }).setOrigin(0.5).setAlpha(0.8);
+
+    this.add.text(width / 2, height - 28, '3 lives • Build combos • Beat your high score!', {
+      fontFamily: 'Arial',
+      fontSize: '13px',
       color: '#888888',
     }).setOrigin(0.5);
 

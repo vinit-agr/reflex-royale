@@ -10,7 +10,7 @@ export class Target {
   
   private lifetime: number;
   private startTime: number;
-  private radius: number = 35;
+  private radius: number;
   private onClickCallback: () => void;
   private onExpireCallback: () => void;
   private isDestroyed: boolean = false;
@@ -25,6 +25,7 @@ export class Target {
     y: number,
     color: number,
     lifetime: number,
+    radius: number, // NEW: configurable radius
     onClick: () => void,
     onExpire: () => void
   ) {
@@ -33,6 +34,7 @@ export class Target {
     this.y = y;
     this.color = color;
     this.lifetime = lifetime;
+    this.radius = radius;
     this.startTime = scene.time.now;
     this.onClickCallback = onClick;
     this.onExpireCallback = onExpire;
@@ -53,11 +55,20 @@ export class Target {
     this.container.add(this.circle);
 
     // Inner highlight
-    this.innerCircle = scene.add.circle(-8, -8, this.radius * 0.3, 0xffffff, 0.3);
+    this.innerCircle = scene.add.circle(
+      -this.radius * 0.23, 
+      -this.radius * 0.23, 
+      this.radius * 0.3, 
+      0xffffff, 
+      0.3
+    );
     this.container.add(this.innerCircle);
 
-    // Make interactive
-    this.circle.setInteractive({ useHandCursor: true });
+    // Make interactive - create a bigger hit area for easier clicking
+    const hitArea = new Phaser.Geom.Circle(0, 0, this.radius + 10);
+    this.circle.setInteractive(hitArea, Phaser.Geom.Circle.Contains);
+    this.circle.input!.cursor = 'pointer';
+    
     this.circle.on('pointerdown', this.handleClick, this);
     this.circle.on('pointerover', this.handleHover, this);
     this.circle.on('pointerout', this.handleHoverOut, this);
@@ -127,9 +138,20 @@ export class Target {
     // Draw timer ring
     this.timerRing.clear();
     if (progress > 0) {
-      // Color transitions from white to red as time runs out
-      const timerColor = progress > 0.3 ? 0xffffff : 0xff4444;
-      const alpha = progress > 0.3 ? 0.8 : 0.9;
+      // Color transitions from white to yellow to red as time runs out
+      let timerColor: number;
+      let alpha: number;
+      
+      if (progress > 0.5) {
+        timerColor = 0xffffff;
+        alpha = 0.8;
+      } else if (progress > 0.25) {
+        timerColor = 0xffff00;
+        alpha = 0.85;
+      } else {
+        timerColor = 0xff4444;
+        alpha = 0.9;
+      }
       
       this.timerRing.lineStyle(4, timerColor, alpha);
       
@@ -191,5 +213,9 @@ export class Target {
     if (this.container && this.container.active) {
       this.container.destroy();
     }
+  }
+
+  getRadius(): number {
+    return this.radius;
   }
 }

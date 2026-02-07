@@ -1,20 +1,27 @@
 import Phaser from 'phaser';
+import { getSoundManager } from '../game/SoundManager';
 
 const HIGH_SCORE_KEY = 'reflex_royale_high_score';
 
 export class GameOverScene extends Phaser.Scene {
   private score: number = 0;
+  private bestCombo: number = 0;
+  private targetsHit: number = 0;
 
   constructor() {
     super({ key: 'GameOverScene' });
   }
 
-  init(data: { score: number }): void {
+  init(data: { score: number; bestCombo?: number; targetsHit?: number }): void {
     this.score = data.score || 0;
+    this.bestCombo = data.bestCombo || 0;
+    this.targetsHit = data.targetsHit || 0;
   }
 
   create(): void {
     const { width, height } = this.scale;
+    const soundManager = getSoundManager();
+    soundManager.resume();
 
     // Get and update high score
     const storedHighScore = localStorage.getItem(HIGH_SCORE_KEY);
@@ -32,13 +39,13 @@ export class GameOverScene extends Phaser.Scene {
     graphics.fillRect(0, 0, width, height);
 
     // Game Over title
-    const gameOverShadow = this.add.text(width / 2 + 3, height / 4 + 3, 'GAME OVER', {
+    const gameOverShadow = this.add.text(width / 2 + 3, height * 0.15 + 3, 'GAME OVER', {
       fontFamily: 'Arial Black, Arial',
       fontSize: '64px',
       color: '#000000',
     }).setOrigin(0.5).setAlpha(0.4);
 
-    const gameOverText = this.add.text(width / 2, height / 4, 'GAME OVER', {
+    const gameOverText = this.add.text(width / 2, height * 0.15, 'GAME OVER', {
       fontFamily: 'Arial Black, Arial',
       fontSize: '64px',
       color: '#e94560',
@@ -56,13 +63,13 @@ export class GameOverScene extends Phaser.Scene {
     });
 
     // Score display
-    const scoreLabel = this.add.text(width / 2, height / 2 - 40, 'YOUR SCORE', {
+    const scoreLabel = this.add.text(width / 2, height * 0.32, 'YOUR SCORE', {
       fontFamily: 'Arial',
       fontSize: '20px',
       color: '#888888',
     }).setOrigin(0.5).setAlpha(0);
 
-    const scoreValue = this.add.text(width / 2, height / 2 + 10, this.score.toString(), {
+    const scoreValue = this.add.text(width / 2, height * 0.40, this.score.toString(), {
       fontFamily: 'Arial Black, Arial',
       fontSize: '72px',
       color: '#ffffff',
@@ -89,12 +96,52 @@ export class GameOverScene extends Phaser.Scene {
       }
     });
 
+    // Stats display (targets hit, best combo)
+    const statsY = height * 0.52;
+    
+    const statsContainer = this.add.container(width / 2, statsY);
+    statsContainer.setAlpha(0);
+
+    const targetsText = this.add.text(-100, 0, `🎯 ${this.targetsHit}`, {
+      fontFamily: 'Arial',
+      fontSize: '24px',
+      color: '#90be6d',
+    }).setOrigin(0.5);
+
+    const comboText = this.add.text(100, 0, `🔥 x${this.bestCombo}`, {
+      fontFamily: 'Arial',
+      fontSize: '24px',
+      color: '#ffd700',
+    }).setOrigin(0.5);
+
+    const targetsLabel = this.add.text(-100, 25, 'Targets Hit', {
+      fontFamily: 'Arial',
+      fontSize: '14px',
+      color: '#666666',
+    }).setOrigin(0.5);
+
+    const comboLabel = this.add.text(100, 25, 'Best Combo', {
+      fontFamily: 'Arial',
+      fontSize: '14px',
+      color: '#666666',
+    }).setOrigin(0.5);
+
+    statsContainer.add([targetsText, comboText, targetsLabel, comboLabel]);
+
+    this.tweens.add({
+      targets: statsContainer,
+      alpha: 1,
+      duration: 400,
+      delay: 900
+    });
+
     // High score display
-    const highScoreContainer = this.add.container(width / 2, height / 2 + 100);
+    const highScoreY = height * 0.65;
+    const highScoreContainer = this.add.container(width / 2, highScoreY);
     
     if (isNewHighScore && this.score > 0) {
       // New high score celebration
-      const newRecordText = this.add.text(0, -20, '🏆 NEW HIGH SCORE! 🏆', {
+      const newRecordText = this.add.text(0, -10, '🏆 NEW HIGH SCORE! 🏆', {
         fontFamily: 'Arial Black, Arial',
         fontSize: '24px',
         color: '#ffd700',
@@ -116,7 +163,7 @@ export class GameOverScene extends Phaser.Scene {
         this.time.delayedCall(i * 100, () => {
           const sparkle = this.add.circle(
             width / 2 + Phaser.Math.Between(-150, 150),
-            height / 2 + 80 + Phaser.Math.Between(-30, 30),
+            highScoreY + Phaser.Math.Between(-30, 30),
             Phaser.Math.Between(2, 5),
             0xffd700
           );
@@ -144,11 +191,11 @@ export class GameOverScene extends Phaser.Scene {
       targets: highScoreContainer,
       alpha: 1,
       duration: 400,
-      delay: 1200
+      delay: 1100
     });
 
     // Play Again button
-    const buttonY = height * 0.78;
+    const buttonY = height * 0.80;
     const buttonBg = this.add.rectangle(width / 2, buttonY, 220, 55, 0xe94560)
       .setStrokeStyle(3, 0xff6b8a)
       .setInteractive({ useHandCursor: true });
@@ -167,7 +214,7 @@ export class GameOverScene extends Phaser.Scene {
       scale: 1,
       duration: 400,
       ease: 'Back.easeOut',
-      delay: 1400
+      delay: 1300
     });
 
     // Button hover effects
@@ -198,6 +245,7 @@ export class GameOverScene extends Phaser.Scene {
     });
 
     buttonBg.on('pointerup', () => {
+      soundManager.playPop();
       this.cameras.main.fadeOut(300, 0, 0, 0);
       this.cameras.main.once('camerafadeoutcomplete', () => {
         this.scene.start('GameScene');
@@ -205,7 +253,7 @@ export class GameOverScene extends Phaser.Scene {
     });
 
     // Menu button
-    const menuButton = this.add.text(width / 2, height - 40, 'Main Menu', {
+    const menuButton = this.add.text(width / 2, height - 30, 'Main Menu', {
       fontFamily: 'Arial',
       fontSize: '18px',
       color: '#666666',
@@ -224,7 +272,7 @@ export class GameOverScene extends Phaser.Scene {
     this.tweens.add({
       targets: menuButton,
       alpha: 1,
-      delay: 1600,
+      delay: 1500,
       duration: 400
     });
 
